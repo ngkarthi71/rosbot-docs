@@ -1,0 +1,25 @@
+<launch>
+    <arg name="teach" default="false"/>
+    <arg name="recognize" default="true"/>
+    <arg name="object_prefix" default="object"/>
+
+    <!-- node to find the marker objects stored inside image_rec !-->
+    <node pkg="find_object_2d" type="find_object_2d" name="find_object_2d">
+        <remap from="image" to="/camera/rgb/image_raw"/>
+        <param name="gui" value="$(arg teach)"/>
+        <param if="$(arg recognize)" name="objects_path" value="$(find ros_challenge)/image_rec/"/>
+		<param name="object_prefix" value="$(arg object_prefix)" type="str"/>
+    </node>
+
+    <!-- fetching the laser scan data and giving it to base_link  !-->
+    <node pkg="tf" type="static_transform_publisher" name="laser_broadcaster" args="0 0 0 3.14 0 0 base_link laser 100" />
+
+    <!-- publishing camera data to base_link !-->
+    <node pkg="tf" type="static_transform_publisher" name="camera_publisher" args="-0.03 0 0.18 0 0 0 base_link camera_link 100" />
+
+    <!-- launching in initiate.py to look for start marker and start exploration !-->
+    <node name="exploration" type="initiate.py" pkg="ros_challenge" output="screen">
+        <param name="duration" value="90" />
+    </node>
+
+</launch>

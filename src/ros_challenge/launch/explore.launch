@@ -1,0 +1,53 @@
+
+<launch>
+    <arg name="rosbot_pro" default="false" />
+
+    <arg name="teach" default="false"/>
+    <arg name="recognize" default="true"/>
+    <arg name="object_prefix" default=""/>
+
+    <!-- node to find the marker objects stored inside image_rec !-->
+    <node pkg="find_object_2d" type="find_object_2d" name="find_object_2d">
+        <remap from="image" to="/camera/rgb/image_raw"/>
+        <param name="gui" value="$(arg teach)"/>
+        <param if="$(arg recognize)" name="objects_path" value="$(find ros_challenge)/image_rec/"/>
+		<param name="object_prefix" value="$(arg object_prefix)" type="str"/>
+    </node>
+
+    <!-- node to start the exploration !-->
+    <node pkg="explore_lite" type="explore" respawn="false" name="explore" output="screen">
+        <rosparam file="$(find ros_challenge)/param/explore.yaml" command="load" />
+    </node>
+
+    <!-- fetching the laser scan data and giving it to base_link  !-->
+    <node pkg="tf" type="static_transform_publisher" name="laser_broadcaster" args="0 0 0 3.14 0 0 base_link laser 100" />
+
+    <!-- publishing camera data to base_link !-->
+    <node pkg="tf" type="static_transform_publisher" name="camera_publisher" args="-0.03 0 0.18 0 0 0 base_link camera_link 100" />
+
+    <!-- getting the map environment for rosbot !-->
+    <node pkg="gmapping" type="slam_gmapping" name="gmapping">
+        <param name="base_frame" value="base_link" />
+        <param name="odom_frame" value="odom" />
+        <param name="delta" value="0.1" />
+    </node>
+
+    <!-- executing the python file to start the exploration !-->
+    <node name="explore" type="exploration.py" pkg="ros_challenge" output="screen">
+        <param name="duration" value="30" />
+    </node>
+
+    <!-- move_base to move the rosbot based on the costmap, and getting the position for obstacles, to avoid them !-->
+    <node pkg="move_base" type="move_base" name="move_base" output="screen">
+        <param name="controller_frequency" value="10.0"/>
+        <rosparam file="$(find ros_challenge)/param/costmap_common_params.yaml" command="load" ns="global_costmap" />
+        <rosparam file="$(find ros_challenge)/param/costmap_common_params.yaml" command="load" ns="local_costmap" />
+        <rosparam file="$(find ros_challenge)/param/local_costmap_params.yaml" command="load" />
+        <rosparam file="$(find ros_challenge)/param/global_costmap_params.yaml" command="load" />
+        <rosparam file="$(find ros_challenge)/param/trajectory_planner.yaml" command="load" />
+    </node>
+
+    <!-- launching the rviz application to visualize the rosbot environment !-->
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find ros_challenge)/rviz/challenge.rviz"/>
+
+</launch>
